@@ -1,4 +1,6 @@
+#ifdef _OPENMP
 # include <omp.h>
+#endif
 #include <cstdlib>
 #include <iostream>
 #include <fstream>

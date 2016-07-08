@@ -1,7 +1,9 @@
 #include <RcppArmadillo.h>
 #include <stdio.h>
 #include <math.h>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 using namespace Rcpp;
 
@@ -71,7 +73,9 @@ NumericMatrix CtoB(NumericMatrix& D, double by, int num_proc){
   NumericVector b(s);
   NumericVector svect(s); //cumulative
   NumericVector cvect(s);
+#ifdef _OPENMP
   omp_set_num_threads(num_proc);
+#endif
 
   NumericMatrix ret(D.nrow(),D.ncol());
 

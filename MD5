@@ -1,4 +1,4 @@
-052fd23e9999565951f1aaefbf082a2d *DESCRIPTION
+10251f5944971fb30e6eb266cca0f272 *DESCRIPTION
 5ad7003ed1704d6a980bbb9c8eb070fb *NAMESPACE
 5a9ab63003448b08b0347f411300b0e9 *R/RcppExports.R
 d5495f713006e0e1da2f7457c837555a *R/header.R
@@ -11,10 +11,10 @@ a9688248d616ef36dc345493f567efc2 *man/mMcrit_pr.Rd
 964fa2cf4775584301743fcad0539a99 *man/miniMaxPro.Rd
 6d04279e6412fb98ea848f913a3264f3 *man/minimaxdesign-package.Rd
 6e5208e37d84705f428fd2ba8e50ddea *man/refine.Rd
-05c2b145ed8d8d4ad0728a0fac1860d0 *src/CtoB.cpp
+83526ba3ffc67b0d4afd43d56694b2e3 *src/CtoB.cpp
 06f6370c7a4f8a1089bae20cdd9470f1 *src/Makevars
 1fe5c20cca51a09f3dea1c237f918b9d *src/RcppExports.cpp
-e77d6a687e9f0f238c30dda35dd932ac *src/header.h
-f279874cc4db183ab55c9d3eb5f5a441 *src/kmeanspso.cpp
-687498c2c4994235215cb73754f27809 *src/mMcrit.cpp
-baf8ab374a7ea8d51427e421303852dc *src/subfunc.cpp
+3c1f7a4a317faff982d0672facd63d2b *src/header.h
+1ffab12113ac7b83e4ef1f7f6a793b28 *src/kmeanspso.cpp
+421ab3bd910013dbcecd78a4d4b96224 *src/mMcrit.cpp
+532e0a1ccb62058d800ed9b6e192ddbf *src/subfunc.cpp

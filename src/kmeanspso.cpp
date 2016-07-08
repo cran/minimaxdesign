@@ -5,7 +5,9 @@
 #include <ctime>
 #include <cstring>
 #include <time.h>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <RcppArmadillo.h>
 
 using namespace Rcpp;
@@ -272,7 +274,9 @@ int num_proc, double tol, double lb, double ub)
 
   arma::mat Dtmp(cluster_num,dim_num); //temporary matrix for computation
 
+#ifdef _OPENMP
   omp_set_num_threads(num_proc);
+#endif
 
 //  double w = 0.72;//inertia constant (from Merwe and Engelbrecht, 2003)
 //  double c1 = 1.49;//acceleration constants
