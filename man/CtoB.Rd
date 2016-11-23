@@ -8,11 +8,11 @@
   \code{CtoB} maps points on the unit hypercube in \eqn{p}-dimensions, \eqn{C_p = [0,1]^p}, to points on the unit simplex in \eqn{p}-dimensions, \eqn{B_p}.
 }
 \usage{
-  CtoB(D,by,num_proc)
+  CtoB(D, by=ifelse(ncol(D)>2,1e-3,-1), num_proc=parallel:::detectCores())
 }
 \arguments{
   \item{D}{An \eqn{N}-by-\eqn{p} matrix representing \eqn{N} points in \eqn{p}-dimensions.}
-  \item{by}{Step-sized used for approximating integrals.}
+  \item{by}{Step-size used for approximating integrals.}
   \item{num_proc}{Number of processors to use.}
 }
 \value{
@@ -24,7 +24,7 @@
     #   onto the unit ball in 3D
     library(randtoolbox)
     des <- sobol(100,3)
-    des_ball <- CtoB(des,by=1e-4,num_proc=1)
+    des_ball <- CtoB(des)
 
     pairs(des_ball,xlim=c(-1,1),ylim=c(-1,1),pch=16)
 

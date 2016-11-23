@@ -16,7 +16,7 @@ License: \tab GPL (>= 2)\cr
 }
 The 'minimaxdesign' package provides two main functions: \code{mMcPSO()} and
     \code{miniMaxPro()}, which generates minimax designs and minimax projection designs using
-    clustering and particle swarm optimization (PSO) techniques. These designs can be used
+    a hybrid clustering - particle swarm optimization (PSO) algorithm. These designs can be used
     in a variety of settings, e.g., as space-filling designs for computer experiments or
     sensor allocation designs. A detailed description of the two designs and the employed
     algorithms can be found in Mak and Joseph (2016).
@@ -27,7 +27,7 @@ Simon Mak
 Maintainer: Simon Mak <smak6@gatech.edu>
 }
 \references{
-Mak, S., & Joseph, V.R. (2016). Minimax designs using clustering. Journal of Computational and Graphical Statistics. In revision.
+Mak, S., & Joseph, V.R. (2016+). Minimax designs using clustering. Journal of Computational and Graphical Statistics. In revision.
 }
 
 \keyword{ package }

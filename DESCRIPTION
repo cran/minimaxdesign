@@ -1,22 +1,22 @@
 Package: minimaxdesign
 Type: Package
 Title: Minimax and Minimax Projection Designs
-Version: 0.1.0.1
+Version: 0.1.1
 Author: Simon Mak
 Maintainer: Simon Mak <smak6@gatech.edu>
-Description: The 'minimaxdesign' package provides two main functions: mMcPSO() and
+Description: Provides two main functions: mMcPSO() and
     miniMaxPro(), which generates minimax designs and minimax projection designs using
-    clustering and particle swarm optimization (PSO) techniques. These designs can be used
+    a hybrid clustering - particle swarm optimization (PSO) algorithm. These designs can be used
     in a variety of settings, e.g., as space-filling designs for computer experiments or
     sensor allocation designs. A detailed description of the two designs and the employed
-    algorithms can be found in Mak and Joseph (2016).
+    algorithms can be found in Mak and Joseph (2016) <https://arxiv.org/abs/1602.03938>.
 License: GPL (>= 2)
 LazyData: TRUE
 Imports: Rcpp (>= 0.12.4), randtoolbox, DiceDesign, MaxPro, doParallel,
-        gtools, nloptr, foreach
+        doSNOW, gtools, nloptr, foreach
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 5.0.1
 NeedsCompilation: yes
-Packaged: 2016-07-08 07:43:57 UTC; ripley
+Packaged: 2016-11-22 23:47:29 UTC; SimonLenovo
 Repository: CRAN
-Date/Publication: 2016-07-08 09:47:34
+Date/Publication: 2016-11-23 01:38:32

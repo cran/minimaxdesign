@@ -18,7 +18,7 @@ using namespace Rcpp;
 //Simplex: Transforms [0,1]^p to A^p
 //--------------------------------------------------------------
 // [[Rcpp::export]]
-NumericMatrix CtoA(NumericMatrix& D, double by, int num_proc) {
+NumericMatrix CtoAA(NumericMatrix& D, double by, int num_proc) {
   // Description of Input
   // D        - Low-discrepancy points on [0,1]^p
   // by       - Approximation step-size

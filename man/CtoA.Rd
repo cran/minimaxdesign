@@ -8,11 +8,11 @@
   \code{CtoA} maps points on the unit hypercube in \eqn{p}-dimensions, \eqn{C_p = [0,1]^p}, to points on the unit simplex in \eqn{p}-dimensions, \eqn{A_p}.
 }
 \usage{
-  CtoA(D,by,num_proc)
+  CtoA(D, by=ifelse(ncol(D)>2,1e-3,-1), num_proc=parallel:::detectCores())
 }
 \arguments{
   \item{D}{An \eqn{N}-by-\eqn{p} matrix representing \eqn{N} points in \eqn{p}-dimensions.}
-  \item{by}{Step-sized used for approximating integrals.}
+  \item{by}{Step-size used for approximating integrals.}
   \item{num_proc}{Number of processors to use.}
 }
 \value{
@@ -20,13 +20,13 @@
 }
 \examples{
   \dontrun{
-    # Map the first 100 points of the Sobol' sequence in 2D
-    #   onto the unit simplex in 2D
+    # Map the first 100 points of the Sobol' sequence in 3D
+    #   onto the unit simplex in 3D
     library(randtoolbox)
-    des <- sobol(100,2)
-    des_simp <- CtoA(des,by=1e-4,num_proc=1)
+    des <- sobol(100,3)
+    des_simp <- CtoA(des)
 
-    plot(des_simp,xlim=c(0,1),ylim=c(0,1),pch=16)
+    pairs(des_simp,xlim=c(0,1),ylim=c(0,1),pch=16)
 
   }
 }

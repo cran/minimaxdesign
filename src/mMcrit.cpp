@@ -102,9 +102,9 @@ NumericVector mMcrit_allpts(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_evalp
 }
 
 //--------------------------------------------------------------
-//Computes minimax criterion for PSO (internal use)
+//Computes minimax and maximin criterion for PSO (internal use)
 //--------------------------------------------------------------
-double mMcrit(arma::mat& point, NumericMatrix& Rcpp_evalpts){
+double mMcrit(arma::mat& point, NumericMatrix& Rcpp_evalpts){ //minimax distance
   // Description of Inputs:
   // Rcpp_point     - Current design
   // Rcpp_evalpts   - Evaluation points for minimax criterion
@@ -134,26 +134,98 @@ double mMcrit(arma::mat& point, NumericMatrix& Rcpp_evalpts){
   return (sqrt(ret));
 }
 
-// [[Rcpp::plugins(openmp)]]
+double mMcrit_idx(arma::mat& point, arma::mat& evalpts){ //minimax index criterion
+  // Description of Inputs:
+  // Rcpp_point     - Current design
+  // Rcpp_evalpts   - Evaluation points for minimax criterion
+  int dim_num = point.n_cols; //dimension of data points
+  int point_num = point.n_rows; //number of data points
+  int eval_num = evalpts.n_rows; // number of evaluation points for mM
+  double dst = 0.0; //track maximum criterion
+
+  for (int i=0;i<eval_num;i++){ // for each evaluation point
+    double tmp1 = 0.0;
+    for (int j=0;j<point_num;j++){ // for each design point
+      double tmp2 = 0.0;
+      for (int k=0; k<dim_num; k++){
+        tmp2 += pow(evalpts(i,k) - point(j,k), 2.0);
+      }
+      tmp1 += 1.0 / pow( tmp2, (double) dim_num);
+    }
+
+    tmp1 = (1.0 / (double) point_num) * tmp1;
+    tmp1 = pow(tmp1, -1.0/(2*(double)dim_num));
+
+    //find the maximum criterion
+    if (tmp1 > dst){
+      dst = tmp1;
+    }
+  }
+  return (dst);
+}
+
+double avgcrit_idx(arma::mat& point, arma::mat& evalpts){ //average distance criterion
+  // Description of Inputs:
+  // Rcpp_point     - Current design
+  // Rcpp_evalpts   - Evaluation points for minimax criterion
+  int dim_num = point.n_cols; //dimension of data points
+  int point_num = point.n_rows; //number of data points
+  int eval_num = evalpts.n_rows; // number of evaluation points for mM
+  double ret = 0.0; //running average
+  double dst;
+
+  for (int i=0;i<eval_num;i++){ // for each evaluation point
+    dst = DBL_MAX; //i.e., arb. large
+    for (int j=0;j<point_num;j++){ // for each design point
+      double tmp = 0.0;
+      //find the closest distance to a design point
+      for (int k=0; k<dim_num; k++){
+        tmp += pow(evalpts(i,k) - point(j,k), 2.0);
+      }
+      tmp = sqrt(tmp);
+      if (tmp < dst){
+        dst = tmp;
+      }
+    }
+    //Add distance to running average
+    ret += (1.0/(double)eval_num)*dst;
+  }
+  return (ret);
+}
+
+//--------------------------------------------------------------
+//Computes minimax and maximin projection criterion for PSO (internal use)
+//--------------------------------------------------------------
+
 // [[Rcpp::export]]
 double mMcrit_proj(NumericMatrix& Rcpp_pts, NumericMatrix& Rcpp_evalpts, NumericMatrix& indices){
   //mMcrit_proj for use in subfunctions
   int dim_num = Rcpp_pts.ncol(); //dimension of data points
   int point_num = Rcpp_pts.nrow(); //number of data points
   int eval_num = Rcpp_evalpts.nrow(); // number of evaluation points for mM
-  int ord = Rcpp_evalpts.ncol(); //Order
+  int ord = indices.ncol(); //Order
   int num_idx = indices.nrow(); //Number of indices
   arma::mat point(Rcpp_pts.begin(),point_num,dim_num,false);
+  arma::mat evalpts(Rcpp_evalpts.begin(),eval_num,dim_num,false);
   vector<double> dst(num_idx);
 
-  #pragma omp parallel for
+  // #pragma omp parallel for
   for (int i=0; i<num_idx; i++){
+
+    // cout << "i: " << i << endl;
+
     uvec idx(ord);
     for (int j=0; j<ord; j++){
       idx(j) = indices(i,j)-1;
     }
     arma::mat proj_pts = point.cols(idx);
-    dst[i] = mMcrit(proj_pts,Rcpp_evalpts);
+    arma::mat proj_eval = evalpts.cols(idx);
+
+    // cout << "Test 0.5" << endl;
+
+    dst[i] = mMcrit_idx(proj_pts,proj_eval);
+
+    // cout << "Test 1" << endl;
   }
 
   double ret = 0.0;
@@ -164,6 +236,48 @@ double mMcrit_proj(NumericMatrix& Rcpp_pts, NumericMatrix& Rcpp_evalpts, Numeric
 
   return(ret);
 }
+
+
+// [[Rcpp::export]]
+double avgcrit_proj(NumericMatrix& Rcpp_pts, NumericMatrix& Rcpp_evalpts, NumericMatrix& indices){
+  //mMcrit_proj for use in subfunctions
+  int dim_num = Rcpp_pts.ncol(); //dimension of data points
+  int point_num = Rcpp_pts.nrow(); //number of data points
+  int eval_num = Rcpp_evalpts.nrow(); // number of evaluation points for mM
+  int ord = indices.ncol(); //Order
+  int num_idx = indices.nrow(); //Number of indices
+  arma::mat point(Rcpp_pts.begin(),point_num,dim_num,false);
+  arma::mat evalpts(Rcpp_evalpts.begin(),eval_num,dim_num,false);
+  vector<double> dst(num_idx);
+
+  // #pragma omp parallel for
+  for (int i=0; i<num_idx; i++){
+
+    // cout << "i: " << i << endl;
+
+    uvec idx(ord);
+    for (int j=0; j<ord; j++){
+      idx(j) = indices(i,j)-1;
+    }
+    arma::mat proj_pts = point.cols(idx);
+    arma::mat proj_eval = evalpts.cols(idx);
+
+    // cout << "Test 0.5" << endl;
+
+    dst[i] = avgcrit_idx(proj_pts,proj_eval);
+
+    // cout << "Test 1" << endl;
+  }
+
+  double ret = 0.0;
+  for (int i=0; i<num_idx; i++){
+    // Rcout << dst[i] << " " << endl;
+    ret = max(ret, dst[i]);
+  }
+
+  return(ret);
+}
+
 
 //double mMcrit_proj(arma::mat& point, NumericMatrix& Rcpp_evalpts, arma::mat& theta, double ord){
 //  //mMcrit_proj for use in subfunctions

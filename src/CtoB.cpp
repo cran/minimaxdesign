@@ -62,9 +62,8 @@ double invF(int s, int j, double target, double by){
 //--------------------------------------------------------------
 //Rosenblatt transformation from hypercube [0,1]^p to ball B^p
 //--------------------------------------------------------------
-// [[Rcpp::plugins(openmp)]]
 // [[Rcpp::export]]
-NumericMatrix CtoB(NumericMatrix& D, double by, int num_proc){
+NumericMatrix CtoBp(NumericMatrix& D, double by, int num_proc){
   // Description of Input
   // D        - Low-discrepancy points on [0,1]^p
   // by       - Approximation step-size
