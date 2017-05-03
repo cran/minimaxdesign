@@ -37,9 +37,9 @@ mMcPSO = function(N,p,q=10,
                   pso=list(w=0.72,c1=1.49,c2=1.49),
                   point_num=1e5,eval_num=10*point_num,point=NA,eval_pts=NA,
                   bd = c(0,1),
-                  part_num=c(pso=10,pp=10),
-                  it_max=c(pso=200,pp=150,inn=1e4),
-                  it_lim=c(pso=25,pp=50),
+                  part_num=c(pso=10,pp=5),
+                  it_max=c(pso=200,pp=50,inn=1e4),
+                  it_lim=c(pso=25,pp=10),
                   it_tol=c(pso=1e-4,pp=1e-4,inn=sqrt(p)*1e-4),
                   region="uh",
                   regionby=ifelse(p>2,1e-3,-1),
@@ -156,11 +156,11 @@ mMcPSO = function(N,p,q=10,
 ########################################################################
 
 #Main function for generating minimax projection designs
-miniMaxPro <- function(N,p,mMdes=NA,it_max=c(pso=100,pp=100,inn=1e4),
+miniMaxPro <- function(N,p,mMdes=NA,
                        refine_num=1e5, refine_pts=NA, refine_itmax=100, mM_tol=1e-3*p, ...){
   #Generate minimax design from mMc-PSO
   if (is.na(mMdes)){
-    mMdes <- mMcPSO(N,p,it_max=it_max, ...)
+    mMdes <- mMcPSO(N,p,...)
   }
   if (is.na(refine_pts)){
     refine_pts <- randtoolbox::sobol(refine_num,p)

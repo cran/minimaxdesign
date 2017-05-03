@@ -5,11 +5,10 @@
   Compute minimax projection designs using clustering
 }
 \description{
-  \code{miniMaxPro} is the main function for generating minimax projection designs on a desired design space \eqn{X}. A formal exposition of minimax projection designs and the employed algorithm can be found in Mak and Joseph (2016). Currently only available when \eqn{X} is the unit hypercube \eqn{[0,1]^p}.
+  \code{miniMaxPro} is the main function for generating minimax projection designs on a desired design space \eqn{X}. A formal exposition of minimax projection designs and the employed algorithm can be found in Mak and Joseph (2017). Currently only available when \eqn{X} is the unit hypercube \eqn{[0,1]^p}.
 }
 \usage{
 miniMaxPro(N,p,mMdes=NA,
-             it_max=c(pso=100,pp=100,inn=1e4),
              refine_num=1e5, refine_pts=NA,
              refine_itmax=100, mM_tol=1e-3*p, ...)
 }
@@ -17,7 +16,6 @@ miniMaxPro(N,p,mMdes=NA,
   \item{N}{Number of design points desired.}
   \item{p}{Dimension of design desired.}
   \item{mMdes}{Minimax design from \code{mMcPSO()}.}
-  \item{it_max}{See documentation for \code{mMcPSO()}.}
   \item{refine_num}{Number of points used to estimate \eqn{X} in the refinement step.}
   \item{refine_pts}{User-specified representative points for the refinement step. If NA, the algorithm generates these points.}
   \item{refine_itmax}{Maximum iterations for the refinement step.}
@@ -32,12 +30,13 @@ A list with two objects:
 \examples{
 \dontrun{
 #Generate a miniMaxPro design of 20 points on the unit hypercube [0,1]^8
-des <- miniMaxPro(N=20,p=8,refine_itmax=100)
+des <- miniMaxPro(N=40,p=8,refine_itmax=100)
 pairs(des$minimax,xlim=c(0,1),ylim=c(0,1),pch=16)
 pairs(des$miniMaxPro,xlim=c(0,1),ylim=c(0,1),pch=16)
 
 #Use the minimax design from mMc-PSO to warm start miniMaxPro at a new setting
-newdes <- miniMaxPro(N=20,p=8,mMdes=des$minimax,refine_itmax=200)
+mMdes <- mMcPSO(N=40,p=8)
+newdes <- miniMaxPro(N=20,p=8,mMdes=mMdes,refine_itmax=100)
 pairs(newdes$miniMaxPro,xlim=c(0,1),ylim=c(0,1),pch=16)
 
 }

@@ -5,16 +5,16 @@
   Compute minimax designs using clustering
 }
 \description{
-  \code{mMcPSO} is the main function for generating minimax designs on a desired design space \eqn{X} using a hybrid clustering - particle swarm optimization (PSO) algorithm. Subfunctions for \code{mMcPSO} are written in C++ for speed. Users have the flexibility of adjusting a variety of algorithmic parameters, including particle swarm optimization (PSO) settings, termination conditions, number of approximating points, etc. A formal exposition of this algorithm can be found in Mak and Joseph (2016).
+  \code{mMcPSO} is the main function for generating minimax designs on a desired design space \eqn{X} using a hybrid clustering - particle swarm optimization (PSO) algorithm. Subfunctions for \code{mMcPSO} are written in C++ for speed. Users have the flexibility of adjusting a variety of algorithmic parameters, including particle swarm optimization (PSO) settings, termination conditions, number of approximating points, etc. A formal exposition of this algorithm can be found in Mak and Joseph (2017).
 }
 \usage{
 mMcPSO(N,p,q=10,
           pso=list(w=0.72,c1=1.49,c2=1.49),
           point_num=1e5,eval_num=10*point_num,point=NA,eval_pts=NA,
           bd = c(0,1),
-          part_num=c(pso=10,pp=10),
-          it_max=c(pso=200,pp=150,inn=1e4),
-          it_lim=c(pso=25,pp=50),
+          part_num=c(pso=10,pp=5),
+          it_max=c(pso=200,pp=50,inn=1e4),
+          it_lim=c(pso=25,pp=10),
           it_tol=c(pso=1e-4,pp=1e-4,inn=sqrt(p)*1e-4),
           region="uh",
           regionby=ifelse(p>2,1e-3,-1),
@@ -46,23 +46,23 @@ mMcPSO(N,p,q=10,
 \dontrun{
 #Generate and plot a minimax design with 20 points on the unit hypercube [0,1]^2
 desuh <- mMcPSO(N=20,p=2)
-plot(desuh,xlim=c(0,1),ylim=c(0,1))
+plot(desuh,xlim=c(0,1),ylim=c(0,1),pch=16)
 
 #Generate and plot a minimax design with 20 points on the unit simplex A_2
 # ... (CtoA provides the mapping from [0,1]^2 to A_2, see ?CtoA)
 dessimp <- mMcPSO(N=20,p=2,region="simp")
-plot(dessimp,xlim=c(0,1),ylim=c(0,1))
+plot(dessimp,xlim=c(0,1),ylim=c(0,1),pch=16)
 abline(0,1)
 
 #Generate and plot a minimax design with 20 points on the unit ball B_2
 # ... (CtoB2 provides the mapping from [0,1]^2 to B_2, see ?CtoB2)
 library(plotrix)
 desball <- mMcPSO(N=20,p=2,region="ball")
-plot(desball,xlim=c(-1,1),ylim=c(-1,1))
+plot(desball,xlim=c(-1,1),ylim=c(-1,1),pch=16)
 draw.circle(0,0,1) #design boundaries
 
 #Generate and plot a minimax design with 20 points on the unit hypercube [0,1]^4
 desuh <- mMcPSO(N=20,p=4)
-pairs(desuh,xlim=c(0,1),ylim=c(0,1))
+pairs(desuh,xlim=c(0,1),ylim=c(0,1),pch=16)
 }
 }
