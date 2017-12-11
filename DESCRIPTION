@@ -1,7 +1,7 @@
 Package: minimaxdesign
 Type: Package
 Title: Minimax and Minimax Projection Designs
-Version: 0.1.2
+Version: 0.1.3
 Author: Simon Mak
 Maintainer: Simon Mak <smak6@gatech.edu>
 Description: Provides two main functions: mMcPSO() and
@@ -13,10 +13,10 @@ Description: Provides two main functions: mMcPSO() and
 License: GPL (>= 2)
 LazyData: TRUE
 Imports: Rcpp (>= 0.12.4), randtoolbox, DiceDesign, MaxPro, doParallel,
-        doSNOW, gtools, nloptr, foreach
+        doSNOW, gtools, nloptr, foreach, jpeg
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 6.0.1
 NeedsCompilation: yes
-Packaged: 2017-05-03 11:01:51 UTC; smak6
+Packaged: 2017-12-11 08:05:05 UTC; Simon
 Repository: CRAN
-Date/Publication: 2017-05-03 12:03:20 UTC
+Date/Publication: 2017-12-11 08:12:12 UTC

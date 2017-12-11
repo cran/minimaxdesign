@@ -33,17 +33,15 @@ CtoB <- function(D, by=ifelse(ncol(D)>2,1e-3,-1), num_proc=parallel:::detectCore
 ########################################################################
 # Main function for mMcPSO
 ########################################################################
-mMcPSO = function(N,p,q=10,
+mMcPSO = function(N,p,q=10,region="uh",
                   pso=list(w=0.72,c1=1.49,c2=1.49),
+                  part_num_pso=10,part_num_pp=5,
                   point_num=1e5,eval_num=10*point_num,point=NA,eval_pts=NA,
-                  bd = c(0,1),
-                  part_num=c(pso=10,pp=5),
-                  it_max=c(pso=200,pp=50,inn=1e4),
-                  it_lim=c(pso=25,pp=10),
-                  it_tol=c(pso=1e-4,pp=1e-4,inn=sqrt(p)*1e-4),
-                  region="uh",
+                  it_max_pso=200,it_max_pp=ifelse(region=="simp",0,50),it_max_inn=1e4,
+                  it_lim_pso=25,it_lim_pp=10,
+                  it_tol_pso=1e-4,it_tol_pp=1e-4,it_tol_inn=1e-4,
                   regionby=ifelse(p>2,1e-3,-1),
-                  jit=0.1/sqrt(N),
+                  jit=ifelse(region=="simp",0,0.1/sqrt(N)),
                   pp_flag=F){
   # Description of Inputs:
   # N                   - Number of design points desired
@@ -66,6 +64,9 @@ mMcPSO = function(N,p,q=10,
 
   #Setting transformation type
   # print(1)
+
+  bd <- c(0,1) #Default limits are (0,1)
+
   switch(region,
          uh = {
            tf <- function(D,by,num_proc){return(D)}
@@ -76,7 +77,7 @@ mMcPSO = function(N,p,q=10,
          simp = {
            tf <- CtoA;
            checkBounds <- function(D){ #function for checking bound
-            return(D)
+             return(D)
            }
          },
          ball = {
@@ -89,8 +90,8 @@ mMcPSO = function(N,p,q=10,
            tf <- CtoB;
            bd <- c(-1,1);
            checkBounds <- function(D){ #function for checking bound
-              good.idx <- which(rowSums(D^2)<=1)
-              return(D[good.idx,])
+             good.idx <- which(rowSums(D^2)<=1)
+             return(D[good.idx,])
            }
          })
   by <- regionby
@@ -119,14 +120,14 @@ mMcPSO = function(N,p,q=10,
   by.clust <- 1e-4
   if (pp_flag){
     cluster_center = stats::kmeans(point, jitter(tf(matrix(stats::runif(N*p),ncol=p),by.clust,parallel::detectCores())) )$centers
-    for (i in 1:(part_num[1]-1)){ #add scrambled randtoolbox::sobol sets
+    for (i in 1:(part_num_pso-1)){ #add scrambled randtoolbox::sobol sets
       cluster_center = cbind(cluster_center,
                              stats::kmeans(point, jitter(tf(matrix(stats::runif(N*p),ncol=p),by.clust,parallel::detectCores())) )$centers
-                             )
+      )
     }
   }else{
     cluster_center = tf(randtoolbox::sobol(N,p),by.clust,parallel::detectCores()) #initial cluster centers
-    for (i in 1:(part_num[1]-1)){ #add scrambled randtoolbox::sobol sets
+    for (i in 1:(part_num_pso-1)){ #add scrambled randtoolbox::sobol sets
       cluster_center = cbind(cluster_center,tf(randtoolbox::sobol(N,p,init=FALSE),by.clust,parallel::detectCores()))
     }
   }
@@ -136,8 +137,8 @@ mMcPSO = function(N,p,q=10,
   t1 = Sys.time()
   D = kmeanspso(point, eval_pts, cluster_center, q, 2.0,
                 pso$w,pso$c1,pso$c2,
-                part_num[2], it_max[1], it_max[2], it_lim[1], it_lim[2], it_tol[1], it_tol[2],
-                it_tol[3], it_max[3],
+                part_num_pp, it_max_pso, it_max_pp, it_lim_pso, it_lim_pp, it_tol_pso, it_tol_pp,
+                it_tol_inn, it_max_inn,
                 parallel::detectCores(), jit, bd[1], bd[2])
   fitpre <- D$gbes_centers
   fitpost <- fitpre;
@@ -156,8 +157,8 @@ mMcPSO = function(N,p,q=10,
 ########################################################################
 
 #Main function for generating minimax projection designs
-miniMaxPro <- function(N,p,mMdes=NA,
-                       refine_num=1e5, refine_pts=NA, refine_itmax=100, mM_tol=1e-3*p, ...){
+miniMaxPro <- function(N,p,mMdes=NA, mM_tol=1e-3*p,
+                       refine_num=1e5, refine_pts=NA, refine_itmax=100, ...){
   #Generate minimax design from mMc-PSO
   if (is.na(mMdes)){
     mMdes <- mMcPSO(N,p,...)
@@ -289,4 +290,70 @@ refine <- function(mMdes,eval_pts=NA,
   parallel::stopCluster(cluster)
 
   return(cur_des)
+}
+
+########################################################################
+# Functions for generating minimax designs from images
+########################################################################
+
+# (N,p,q=10,region="uh",
+#  pso=list(w=0.72,c1=1.49,c2=1.49),
+#  part_num_pso=10,part_num_pp=5,
+#  point_num=1e5,eval_num=10*point_num,point=NA,eval_pts=NA,
+#  it_max_pso=200,it_max_pp=50,it_max_inn=1e4,
+#  it_lim_pso=25,it_lim_pp=10,
+#  it_tol_pso=1e-4,it_tol_pp=1e-4,it_tol_inn=1e-4,
+#  regionby=ifelse(p>2,1e-3,-1),
+#  jit=ifelse(region=="simp",0,0.1/sqrt(N)),
+#  pp_flag=F)
+
+mMcPSO_map = function(N,img,p=2,q=10,
+                      pso=list(w=0.72,c1=1.49,c2=1.49),
+                      part_num_pso=10,part_num_pp=5,
+                      point_num=1e5,eval_num=10*point_num,point=NA,eval_pts=NA,
+                      it_max_pso=200,it_max_pp=50,it_max_inn=1e4,
+                      it_lim_pso=25,it_lim_pp=10,
+                      it_tol_pso=1e-4,it_tol_pp=1e-4,it_tol_inn=1e-4,
+                      jit=0.1/sqrt(N)){
+
+  # Description of Inputs:
+  # N                   - Number of design points desired
+  # q                   - approximation coefficient for minimax criterion
+  # point_num           - Number of clustering data points to use
+  # eval_num            - Number of evaluation points to use in minimax post-processing
+  # part_num            - Number of PSO particles to use in minimax clustering
+  # mM_part_num         - Number of PSO particles to use in minimax post-processing
+  # it_max              - Maximum iterations for minimax clustering
+  # mM_it_max           - Maximum iterations for minimax post-processing
+  # tol                 - Jitter tolerance
+
+  #Read in image
+  mapfile <- round(img)
+
+  #Get evaluation points for minimax PSO
+  eval_pts <- which(mapfile==0,arr.ind=T)
+  eval_pts[,1] <- eval_pts[,1]/nrow(mapfile)
+  eval_pts[,2] <- eval_pts[,2]/ncol(mapfile)
+
+  # Get clustering data
+  point <- eval_pts[sample.int(nrow(eval_pts),point_num),]
+  # inv_pt <- cbind(point[,2],point[,1])
+  # inv_pt[,2] <- 1 - inv_pt[,2]
+  # plot(inv_pt)
+
+  #Get initial centers
+  cluster_center <- eval_pts[sample.int(nrow(eval_pts),N),]
+  for (i in 1:(part_num_pso-1)){
+    cluster_center = cbind(cluster_center, eval_pts[sample.int(nrow(eval_pts),N),])
+  }
+
+  # Do mMc-PSO
+  bd <- c(0,1)
+  D <- kmeanspso(point, eval_pts, cluster_center, q, 2.0,
+                pso$w,pso$c1,pso$c2,
+                part_num_pp, it_max_pso, it_max_pp, it_lim_pso, it_lim_pp, it_tol_pso, it_tol_pp,
+                it_tol_inn, it_max_inn,
+                parallel::detectCores(), jit, bd[1], bd[2])
+  # D$gbes_centers <- cbind(D$gbes_centers[,2],1-D$gbes_centers[,1])
+  return(D$gbes_centers)
 }

@@ -8,9 +8,8 @@
   \code{miniMaxPro} is the main function for generating minimax projection designs on a desired design space \eqn{X}. A formal exposition of minimax projection designs and the employed algorithm can be found in Mak and Joseph (2017). Currently only available when \eqn{X} is the unit hypercube \eqn{[0,1]^p}.
 }
 \usage{
-miniMaxPro(N,p,mMdes=NA,
-             refine_num=1e5, refine_pts=NA,
-             refine_itmax=100, mM_tol=1e-3*p, ...)
+miniMaxPro(N,p,mMdes=NA, mM_tol=1e-3*p,
+            refine_num=1e5, refine_pts=NA, refine_itmax=100, ...)
 }
 \arguments{
   \item{N}{Number of design points desired.}

@@ -11,7 +11,7 @@ The 'minimaxdesign' package provides functions for generating minimax designs an
 Package: \tab minimaxdesign\cr
 Type: \tab Package\cr
 Version: \tab 1.0\cr
-Date: \tab 2016-04-13\cr
+Date: \tab 2017-04-13\cr
 License: \tab GPL (>= 2)\cr
 }
 The 'minimaxdesign' package provides two main functions: \code{mMcPSO()} and
@@ -27,7 +27,7 @@ Simon Mak
 Maintainer: Simon Mak <smak6@gatech.edu>
 }
 \references{
-Mak, S., & Joseph, V.R. (2017). Minimax and minimax projection designs using clustering. Journal of Computational and Graphical Statistics.
+Mak, S., & Joseph, V.R. (2017). Minimax and minimax projection designs using clustering. \emph{Journal of Computational and Graphical Statistics.} To appear.
 }
 
 \keyword{ package }

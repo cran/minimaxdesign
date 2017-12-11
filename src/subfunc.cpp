@@ -667,3 +667,33 @@ void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& clust
   cluster_center = min_center;
 
 }
+
+//--------------------------------------------------------------
+//Find closest point from image
+//--------------------------------------------------------------
+// [[Rcpp::export]]
+NumericMatrix closestPt(NumericMatrix& points, NumericMatrix& grd) {
+  //points - Original sobol' points
+  //grd - image with xdim times ydim pixels
+
+  int xdim = grd.nrow();
+  int ydim = grd.ncol();
+  NumericMatrix ret(points.nrow(),points.ncol());
+  int count = 0;
+  int idx1,idx2;
+
+  for (int i=0;i<points.nrow();i++){
+    idx1 = round(xdim*(points(i,0)-1/(2*xdim)));
+    idx2 = round(ydim*(points(i,1)-1/(2*ydim)));
+    if (grd(idx1,idx2)==0.0){
+      //Add to list
+      ret(count,0)=points(i,0);
+      ret(count,1)=points(i,1);
+      count++;
+    }
+  }
+
+  //Cut the matrix appropriately
+  ret = ret(Range(0,count-1),Range(0,1));
+  return(ret);
+}
