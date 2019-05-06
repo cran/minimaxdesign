@@ -19,6 +19,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// printBar
+void printBar(double prop);
+RcppExport SEXP _minimaxdesign_printBar(SEXP propSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type prop(propSEXP);
+    printBar(prop);
+    return R_NilValue;
+END_RCPP
+}
 // kmeansreg
 NumericMatrix kmeansreg(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_cluster_center, double p, double pw, int it_max, double inn_tol, int num_proc);
 RcppExport SEXP _minimaxdesign_kmeansreg(SEXP Rcpp_pointSEXP, SEXP Rcpp_cluster_centerSEXP, SEXP pSEXP, SEXP pwSEXP, SEXP it_maxSEXP, SEXP inn_tolSEXP, SEXP num_procSEXP) {

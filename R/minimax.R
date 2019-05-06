@@ -2,143 +2,124 @@
 # Sys.setenv("PKG_CXXFLAGS"="-fopenmp")
 # Sys.setenv("PKG_LIBS"="-fopenmp")
 
-######################################################################
-# Loading required libraries
-######################################################################
-library(randtoolbox)
-library(DiceDesign)
-library(gtools)
-library(MaxPro)
-library(parallel)
-library(doParallel)
-library(nloptr)
-library(foreach)
-library(Rcpp)
-
-CtoA <- function(D, by=ifelse(ncol(D)>2,1e-3,-1), num_proc=parallel:::detectCores()){
-  ret <- CtoAA(D,by,num_proc)
-  return(ret)
-}
-
-CtoB <- function(D, by=ifelse(ncol(D)>2,1e-3,-1), num_proc=parallel:::detectCores()){
-  pp <- ncol(D)
-  if (pp > 2){
-    ret <- CtoBp(D,by,num_proc)
-  }else{
-    ret <- CtoB2(D,by,num_proc)
-  }
-  return(ret)
-}
-
 ########################################################################
 # Main function for mMcPSO
 ########################################################################
-mMcPSO = function(N,p,q=10,region="uh",
-                  pso=list(w=0.72,c1=1.49,c2=1.49),
-                  part_num_pso=10,part_num_pp=5,
-                  point_num=1e5,eval_num=10*point_num,point=NA,eval_pts=NA,
-                  it_max_pso=200,it_max_pp=ifelse(region=="simp",0,50),it_max_inn=1e4,
-                  it_lim_pso=25,it_lim_pp=10,
-                  it_tol_pso=1e-4,it_tol_pp=1e-4,it_tol_inn=1e-4,
-                  regionby=ifelse(p>2,1e-3,-1),
-                  jit=ifelse(region=="simp",0,0.1/sqrt(N)),
-                  pp_flag=F){
-  # Description of Inputs:
-  # N                   - Number of design points desired
-  # p                   - Dimension of design space
-  # k                   - q in paper; approximation coefficient for minimax criterion
-  # point_num           - Number of clustering data points to use
-  # eval_num            - Number of evaluation points to use in minimax post-processing
-  # part_num            - Number of PSO particles to use in minimax clustering
-  # mM_part_num         - Number of PSO particles to use in minimax post-processing
-  # it_max              - Maximum iterations for minimax clustering
-  # mM_it_max           - Maximum iterations for minimax post-processing
-  # inn_itmax           - Inner maximum iterations for AGD
-  # trans_f             - Transformation function for randtoolbox::sobol' sequence
-  # by                  - Approximation step-size for transformation
-  # tol                 - Jitter tolerance
-  # lb                  - Lower bound for design
-  # ub                  - Upper bound for design
-  # eval_pts            - Pre-computed evaluation points (NA - compute within function)
-  # point               - Pre-computed clustering data (NA - compute within function)
+minimax <- function(N,p,q=10,region="hypercube",ini=NA,const=NA,
+                  params_pso=list(w=0.72,c1=1.49,c2=1.49),
+                  npart=5,nclust=1e5,neval=nclust,
+                  itmax_pso=50,itmax_pp=100,itmax_inn=1e4,jit=0.1/sqrt(N)){
 
   #Setting transformation type
-  # print(1)
-
+  regionby=ifelse(p>2,1e-3,-1) #for simplex transformation
   bd <- c(0,1) #Default limits are (0,1)
 
   switch(region,
-         uh = {
+         hypercube = {
            tf <- function(D,by,num_proc){return(D)}
            checkBounds <- function(D){ #function for checking bound
              return(D)
            }
          },
-         simp = {
+         simplex = {
            tf <- CtoA;
            checkBounds <- function(D){ #function for checking bound
              return(D)
            }
          },
          ball = {
-           # if (p==2){
-           #   tf <- CtoB2;
-           # }
-           # else{
-           #   tf <- CtoBp;
-           # }
            tf <- CtoB;
            bd <- c(-1,1);
            checkBounds <- function(D){ #function for checking bound
              good.idx <- which(rowSums(D^2)<=1)
              return(D[good.idx,])
            }
+         },
+         custom = {
+           tf <- function(D,by,num_proc){ #randomly sample until enough points
+             num_pts <- nrow(D)
+             samp <- matrix(NA,nrow=num_pts,ncol=p)
+             cur_pts <- 0
+             while (cur_pts < num_pts){
+               xx <- stats::runif(p)
+               if (const(xx)){
+                 samp[cur_pts+1,] <- xx
+                 cur_pts <- cur_pts + 1
+               }
+             }
+             return(samp)
+           }
+           checkBounds <- function(D){ #function for checking bound
+             good.idx <- apply(D,1,const)
+             return(D[good.idx,])
+           }
          })
   by <- regionby
 
-  # print(2.1)
-  # print(by)
-  # print(parallel::detectCores())
-  print("Generating approximating point sets ...")
-  if (is.na(point)){
+  print("Generating clustering points ...")
+  # if (is.na(clust_pts)){
     #Generate point
-    point = tf(randtoolbox::sobol(point_num,p),by,parallel::detectCores()) #clustering points
-    point <- checkBounds(point)
-  }
+    # point = tf(randtoolbox::sobol(nclust,p),by,parallel::detectCores()) #clustering points
+    clust_pts = tf(as.matrix(Lattice(max(conf.design::primes(nclust)),p))) #clustering points
+    clust_pts <- checkBounds(clust_pts)
+  # }
 
-  # print(2.2)
-  if (is.na(eval_pts)){
+  # if (is.na(eval_pts)){
     #Generate eval_pts
-    eval_pts = tf(randtoolbox::sobol(eval_num,p,init=FALSE),by,parallel::detectCores()) #minimax approximation points for post-processing
+    # eval_pts = tf(randtoolbox::sobol(neval,p),by,parallel::detectCores()) #minimax approximation points for post-processing
+    eval_pts = tf(as.matrix(Lattice(max(conf.design::primes(neval)),p,shift=TRUE))) #minimax approximation points for post-processing
+    eval_pts = rbind(eval_pts,tf(gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE))) #add 3^p design
     eval_pts <- checkBounds(eval_pts)
-  }
+  # }
 
   #   offset = seq(0,1-1/part_num,1/part_num)
 
-  # print(3)
   # Generate initial center particles
+
+  #automatically set initialization flag
   by.clust <- 1e-4
-  if (pp_flag){
-    cluster_center = stats::kmeans(point, jitter(tf(matrix(stats::runif(N*p),ncol=p),by.clust,parallel::detectCores())) )$centers
-    for (i in 1:(part_num_pso-1)){ #add scrambled randtoolbox::sobol sets
-      cluster_center = cbind(cluster_center,
-                             stats::kmeans(point, jitter(tf(matrix(stats::runif(N*p),ncol=p),by.clust,parallel::detectCores())) )$centers
-      )
+  if (is.na(ini)){
+    if (region=="hypercube"){
+      if ( (is.whole(log(N)/log(2))) && (N <= 2^p) ){ # ff initialization
+        ini <- "ff"
+      }else if( (N>2^p) && (N<=1.25*2^p) ){
+        ini <- "ff"
+      }else{
+        ini <- "sobol"
+      }
+    }else{
+      ini <- "sobol"
     }
-  }else{
+  }
+  # Initialize
+  if (ini=="sobol"){ # initialize via randomized sobol'
     cluster_center = tf(randtoolbox::sobol(N,p),by.clust,parallel::detectCores()) #initial cluster centers
-    for (i in 1:(part_num_pso-1)){ #add scrambled randtoolbox::sobol sets
+    for (i in 1:(npart-1)){ #add scrambled randtoolbox::sobol sets
       cluster_center = cbind(cluster_center,tf(randtoolbox::sobol(N,p,init=FALSE),by.clust,parallel::detectCores()))
+    }
+  }else if (ini=="ff"){ # initialize via 2^(k-p) fractional factorial
+    if ( N >= 2*(2^p) ){
+      stop("Design size too large for FF initialization!")
+    }else{
+      pwf = floor(log(N)/log(2));
+      cur_center = tf(0.25*DoE.base::desnum(FrF2::FrF2(2^pwf,p))+0.5,by.clust,parallel::detectCores()) #initial cluster centers
+      cur_center = rbind(cur_center,tf(jitter(randtoolbox::sobol(N-2^pwf,p)),by.clust,parallel::detectCores()))
+      cluster_center = cur_center
+      for (i in 1:(npart-1)){
+        cur_center = tf(0.25*DoE.base::desnum(FrF2::FrF2(2^pwf,p))+0.5,by.clust,parallel::detectCores()) #initial cluster centers
+        cur_center = rbind(cur_center,tf(jitter(randtoolbox::sobol(N-2^pwf,p,init=FALSE)),by.clust,parallel::detectCores()))
+        cluster_center = cbind(cluster_center,cur_center)
+      }
     }
   }
 
-  # print(4)
+  # print("4")
   # mMc-PSO: function coded in C++
   t1 = Sys.time()
-  D = kmeanspso(point, eval_pts, cluster_center, q, 2.0,
-                pso$w,pso$c1,pso$c2,
-                part_num_pp, it_max_pso, it_max_pp, it_lim_pso, it_lim_pp, it_tol_pso, it_tol_pp,
-                it_tol_inn, it_max_inn,
+  D = kmeanspso(clust_pts, eval_pts, cluster_center, q, 2.0,
+                params_pso$w,params_pso$c1,params_pso$c2,
+                2*npart, itmax_pso, itmax_pp, 1000, 1000, 1e-4, 1e-4,
+                1e-4, itmax_inn,
                 parallel::detectCores(), jit, bd[1], bd[2])
   fitpre <- D$gbes_centers
   fitpost <- fitpre;
@@ -150,6 +131,7 @@ mMcPSO = function(N,p,q=10,region="uh",
   # D$gbes_centers <- fitpost
   # D$time <- tm
   return(D$gbes_centers)
+  # return(eval_pts)
 }
 
 ########################################################################
@@ -157,18 +139,20 @@ mMcPSO = function(N,p,q=10,region="uh",
 ########################################################################
 
 #Main function for generating minimax projection designs
-miniMaxPro <- function(N,p,mMdes=NA, mM_tol=1e-3*p,
-                       refine_num=1e5, refine_pts=NA, refine_itmax=100, ...){
+miniMaxPro <- function(N,p,mMdes=NA, mMtol=1e-3*p,
+                       neval=1e5, itmax_refine=100, ...){
   #Generate minimax design from mMc-PSO
   if (is.na(mMdes)){
-    mMdes <- mMcPSO(N,p,...)
+    mMdes <- minimax(N,p,...)
   }
-  if (is.na(refine_pts)){
-    refine_pts <- randtoolbox::sobol(refine_num,p)
-  }
+  # if (is.na(refine_pts)){
+    # refine_pts <- randtoolbox::sobol(refine_num,p)
+  # }
+  eval_pts = as.matrix(Lattice(max(conf.design::primes(neval)),p,shift=TRUE)) #minimax approximation points for post-processing
+  eval_pts = rbind(eval_pts,gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE)) #add 3^p design
 
   #Refinement
-  ret <- refine(mMdes,eval_pts=refine_pts,pp_itmax=refine_itmax,mM_tol=mM_tol)
+  ret <- refine(mMdes,eval_pts=eval_pts,pp_itmax=itmax_refine,mM_tol=mMtol)
 
   return( list(minimax=mMdes,miniMaxPro=ret) )
 
@@ -214,8 +198,9 @@ refine <- function(mMdes,eval_pts=NA,
   cur_des <- mMdes
   itcur <- 0
 
+  print(paste0("MaxPro refinement ..."))
   while (itcur < pp_itmax){
-    print(paste0("MaxPro adjustment iteration: ", itcur))
+    if(itcur>1) printBar(itcur/pp_itmax)
 
     #Blockwise MaxPro for each design point
     dst_vec <- mMcrit_allpts( cur_des, eval_pts ) #First compute the minimum distance for each design point
@@ -228,8 +213,10 @@ refine <- function(mMdes,eval_pts=NA,
 
     while (!flg_cont){
       biglist <- foreach::'%dopar%'(foreach::foreach (i = indices, .packages="nloptr"),
+      # biglist <- foreach::'%do%'(foreach::foreach (i = indices, .packages="nloptr"),
       {
         toler <- dst_vec[i]/jitter.scl # Ensures the jittered initial points do not exceed minimax
+        # print(toler)
         cur_pt <- cur_des[i,] #Current point
         DD <- cur_des[-i,] #Design without current point
 
@@ -298,34 +285,19 @@ refine <- function(mMdes,eval_pts=NA,
 
 # (N,p,q=10,region="uh",
 #  pso=list(w=0.72,c1=1.49,c2=1.49),
-#  part_num_pso=10,part_num_pp=5,
-#  point_num=1e5,eval_num=10*point_num,point=NA,eval_pts=NA,
-#  it_max_pso=200,it_max_pp=50,it_max_inn=1e4,
+#  npart=10,2*npart=5,
+#  nclust=1e5,neval=10*nclust,point=NA,eval_pts=NA,
+#  itmax_pso=200,itmax_pp=50,itmax_inn=1e4,
 #  it_lim_pso=25,it_lim_pp=10,
-#  it_tol_pso=1e-4,it_tol_pp=1e-4,it_tol_inn=1e-4,
+#  tol_pso=1e-4,tol_pp=1e-4,tol_inn=1e-4,
 #  regionby=ifelse(p>2,1e-3,-1),
 #  jit=ifelse(region=="simp",0,0.1/sqrt(N)),
 #  pp_flag=F)
 
-mMcPSO_map = function(N,img,p=2,q=10,
-                      pso=list(w=0.72,c1=1.49,c2=1.49),
-                      part_num_pso=10,part_num_pp=5,
-                      point_num=1e5,eval_num=10*point_num,point=NA,eval_pts=NA,
-                      it_max_pso=200,it_max_pp=50,it_max_inn=1e4,
-                      it_lim_pso=25,it_lim_pp=10,
-                      it_tol_pso=1e-4,it_tol_pp=1e-4,it_tol_inn=1e-4,
-                      jit=0.1/sqrt(N)){
-
-  # Description of Inputs:
-  # N                   - Number of design points desired
-  # q                   - approximation coefficient for minimax criterion
-  # point_num           - Number of clustering data points to use
-  # eval_num            - Number of evaluation points to use in minimax post-processing
-  # part_num            - Number of PSO particles to use in minimax clustering
-  # mM_part_num         - Number of PSO particles to use in minimax post-processing
-  # it_max              - Maximum iterations for minimax clustering
-  # mM_it_max           - Maximum iterations for minimax post-processing
-  # tol                 - Jitter tolerance
+minimax.map = function(N,img,p=2,q=10,
+                      params_pso=list(w=0.72,c1=1.49,c2=1.49),
+                      npart=5,nclust=1e5,neval=nclust,
+                      itmax_pso=50,itmax_pp=100,itmax_inn=1e4,jit=0.1/sqrt(N)){
 
   #Read in image
   mapfile <- round(img)
@@ -336,24 +308,33 @@ mMcPSO_map = function(N,img,p=2,q=10,
   eval_pts[,2] <- eval_pts[,2]/ncol(mapfile)
 
   # Get clustering data
-  point <- eval_pts[sample.int(nrow(eval_pts),point_num),]
+  clust_pts <- eval_pts[sample.int(nrow(eval_pts),nclust),]
   # inv_pt <- cbind(point[,2],point[,1])
   # inv_pt[,2] <- 1 - inv_pt[,2]
   # plot(inv_pt)
 
-  #Get initial centers
+  #Generate initial centers
   cluster_center <- eval_pts[sample.int(nrow(eval_pts),N),]
-  for (i in 1:(part_num_pso-1)){
+  for (i in 1:(npart[1]-1)){
     cluster_center = cbind(cluster_center, eval_pts[sample.int(nrow(eval_pts),N),])
   }
 
   # Do mMc-PSO
   bd <- c(0,1)
-  D <- kmeanspso(point, eval_pts, cluster_center, q, 2.0,
-                pso$w,pso$c1,pso$c2,
-                part_num_pp, it_max_pso, it_max_pp, it_lim_pso, it_lim_pp, it_tol_pso, it_tol_pp,
-                it_tol_inn, it_max_inn,
+  D <- kmeanspso(clust_pts, eval_pts, cluster_center, q, 2.0,
+                params_pso$w,params_pso$c1,params_pso$c2,
+                2*npart, itmax_pso, itmax_pp, 1000, 1000, 1e-4, 1e-4,
+                1e-4, itmax_inn,
                 parallel::detectCores(), jit, bd[1], bd[2])
   # D$gbes_centers <- cbind(D$gbes_centers[,2],1-D$gbes_centers[,1])
   return(D$gbes_centers)
 }
+
+# if (ini=="kmeans"){ # initialize via k-means clustering
+#   cluster_center = stats::kmeans(clust_pts, jitter(tf(matrix(stats::runif(N*p),ncol=p),by.clust,parallel::detectCores())) )$centers
+#   for (i in 1:(npart-1)){ #add scrambled randtoolbox::sobol sets
+#     cluster_center = cbind(cluster_center,
+#                            stats::kmeans(clust_pts, jitter(tf(randtoolbox::sobol(N,p,init=FALSE),by.clust,parallel::detectCores())) )$centers
+#     )
+#   }
+# }else

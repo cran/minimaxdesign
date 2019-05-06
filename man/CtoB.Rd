@@ -2,7 +2,7 @@
 \alias{CtoB}
 \docType{package}
 \title{
-  Inverse Rosenblatt transformation from the unit hypercube to the unit ball.
+  Inverse Rosenblatt transformation from the unit hypercube to the unit ball
 }
 \description{
   \code{CtoB} maps points on the unit hypercube in \eqn{p}-dimensions, \eqn{C_p = [0,1]^p}, to points on the unit simplex in \eqn{p}-dimensions, \eqn{B_p}.

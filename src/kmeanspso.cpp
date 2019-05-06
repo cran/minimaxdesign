@@ -62,10 +62,38 @@ void jitter(arma::mat& des, arma::cube& des_part, double tol, double lb, double 
 }
 
 //--------------------------------------------------------------
+//Progress bar
+//--------------------------------------------------------------
+void flush_console() {
+#if !defined(WIN32) && !defined(__WIN32) && !defined(__WIN32__)
+  R_FlushConsole();
+#endif
+}
+
+// [[Rcpp::export]]
+void printBar(double prop){
+
+  int barWidth = 70;
+
+  // std::cout.flush();
+  flush_console();
+  Rcout << "[";
+  int pos = barWidth * prop;
+  for (int i = 0; i < barWidth; ++i) {
+    if (i < pos) Rcout << "=";
+    else if (i == pos) Rcout << ">";
+    else Rcout << " ";
+  }
+  Rcout << "] " << int(prop * 100.0) << " %\r";
+
+}
+
+
+//--------------------------------------------------------------
 //Post-processing function using the minimax criterion
 //--------------------------------------------------------------
 // [[Rcpp::plugins(openmp)]]
-double mMcritPSO(arma::mat& des, NumericMatrix& Rcpp_evalpts, int part_num,
+double mMcritPSO(arma::cube& cluster_center, arma::cube& ini_cluster_center, arma::mat& des, NumericMatrix& Rcpp_evalpts,
     int it_max, int it_lim,
     double it_tol, double tol, double lb, double ub,
     double w, double c1, double c2){
@@ -77,13 +105,31 @@ double mMcritPSO(arma::mat& des, NumericMatrix& Rcpp_evalpts, int part_num,
   // tol          - Jitter tolerance in minimax post-processing
   // lb           - Lower bound of design
   // ub           - Upper bound of design
-  part_num ++; //one particle for initial particle from kmeans
+  // part_num ++; //one particle for initial particle from kmeans
+
   int cluster_num = des.n_rows;
   int dim_num = des.n_cols;
+  int part_num = 2*cluster_center.n_slices;
+
+  double bst_obj = DBL_MAX;
+  double c_obj = DBL_MAX;
+  int bst_idx = -1;
+  for (int i=0;i<cluster_center.n_slices;++i){
+    c_obj = mMcrit(cluster_center.slice(i), Rcpp_evalpts);
+    if (c_obj < bst_obj){
+      bst_obj = c_obj;
+      bst_idx = i;
+    }
+  }
+  des = cluster_center.slice(bst_idx);
+
+  // //Jitter points to make new particles
+  arma::cube des_part = zeros(cluster_num,dim_num,part_num);
+  jitter(des,des_part,tol,lb,ub);
+  des_part = join_slices(des_part,ini_cluster_center);//particles
   arma::cube des_vel = zeros(cluster_num,dim_num,part_num);//current velocity
-  arma::cube des_part = zeros(cluster_num,dim_num,part_num);//particles
   arma::cube des_lbes = zeros(cluster_num,dim_num,part_num);//lbes positions
-    //global best position will be saved in des
+  //global best position will be saved in des
   arma::mat Dtmp(cluster_num,dim_num); //temporary container for computation
 
   arma::vec cur_obj = DBL_MAX*ones(part_num); //current objectives
@@ -91,8 +137,8 @@ double mMcritPSO(arma::mat& des, NumericMatrix& Rcpp_evalpts, int part_num,
   double gbes_obj = DBL_MAX;
   double prev_gbes_obj = DBL_MAX;
 
-  //Jitter points to make new particles
-  jitter(des,des_part,tol,lb,ub);
+  // Generate new particles
+  // arma::cube des_part = cluster_center;
 
   //Do PSO with mMcrit (true minimax) function
   clock_t t = clock(); //timing
@@ -102,13 +148,14 @@ double mMcritPSO(arma::mat& des, NumericMatrix& Rcpp_evalpts, int part_num,
   while ((it_num<it_max)&&(it_same<it_lim))
   {
 
-    Rcout << "Post-processing iteration " << it_num << " ... " << endl;
+    // Rcout << "Post-processing iteration " << it_num << " ... " << endl;
+    double prop = (double)it_num / (double)it_max;
+    if (it_num>0){printBar(prop);}
 
     //Update minimax
     #pragma omp parallel for
     for (int i=0;i<part_num;++i){
       cur_obj(i) = mMcrit(des_part.slice(i), Rcpp_evalpts);
-//      cout << "cur_obj(i): " << cur_obj(i) << endl;
     };
 
     //Update lbes and gbes
@@ -125,8 +172,8 @@ double mMcritPSO(arma::mat& des, NumericMatrix& Rcpp_evalpts, int part_num,
         des = des_part.slice(i);
         prev_gbes_obj = gbes_obj;
         gbes_obj = cur_obj(i);
-        Rcout <<  "gbes_obj changed to:" << endl;
-        Rcout << gbes_obj << endl;
+        // Rcout <<  "gbes_obj changed to:" << endl;
+        // Rcout << gbes_obj << endl;
 
         //update flag if threshold exceeded
         if (prev_gbes_obj - gbes_obj > it_tol){
@@ -206,7 +253,7 @@ NumericMatrix kmeansreg(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_cluster_c
   Rcout << "Minimax clustering ... " << endl;
   Rcout << "-------------------------------------------------" << endl;
 
-  kmeansreg(point,cluster_center,cluster,cluster_energy,p, pw,it_max,inn_tol,inn_itmax);
+  kmeansreg(point,cluster_center,cluster,cluster_energy,p,pw,it_max,inn_tol,inn_itmax);
 
   //wrap to Rcpp classes for output
   NumericMatrix ret_cluster_center(cluster_num,dim_num);
@@ -260,6 +307,7 @@ int num_proc, double tol, double lb, double ub)
   arma::mat point(Rcpp_point.begin(),point_num,dim_num,false);
   //current cluster centers (or design points)
   arma::cube cluster_center(Rcpp_cluster_center.begin(),cluster_num,dim_num,part_num);
+  arma::cube ini_cluster_center = cluster_center;
   //current velocity
   arma::cube cluster_vel = zeros(cluster_num,dim_num,part_num);
   //lbest positions
@@ -296,29 +344,25 @@ int num_proc, double tol, double lb, double ub)
 //  cout << "Step 1: PSO clustering ... " << endl;
 //  cout << "-------------------------------------------------" << endl;
 
-
+  Rcout << "Minimax clustering ..." << endl;
   while ((it_num<it_max)&&(it_same<it_lim))
   {
-    Rcout << "PSO clustering iteration " << it_num << " ... " << endl;
+    // Rcout << "PSO clustering iteration " << it_num << " ... " << endl;
+    double prop = (double)it_num / (double)it_max;
+    if (it_num>0){printBar(prop);}
 
     //Update partition, centroids and energy
-//    cout << "kmeanspso...1" << endl;
     #pragma omp parallel for
     for (int i=0;i<part_num;++i){
-//      cout << "kmeanspso...1.1" << endl;
       arma::rowvec tmp1 = cluster.row(i);
       arma::rowvec tmp2 = cluster_energy.row(i);
-//      cout << "kmeanspso...1.2" << endl;
       kmeansreg(point,cluster_center.slice(i),tmp1,tmp2,p,pw,inn_tol,inn_itmax);
-//      cout << "kmeanspso...1.3" << endl;
       cluster.row(i) = tmp1;
       cluster_energy.row(i) = tmp2;
     };
-//    cout << "kmeanspso...2" << endl;
 
     //Update lbes and gbes
     cluster_tot = sum(cluster_energy,1);
-//    cout << cluster_tot << endl;
     if (p > 2){
       cluster_tot = pow(cluster_tot,1/p);
     }
@@ -338,11 +382,11 @@ int num_proc, double tol, double lb, double ub)
         gbes_obj = cluster_tot(i);
         assign_gbes = cluster.row(i); //update optimal assignment
         energy_gbes = cluster_energy.row(i); //update optimal energy
-        Rcout <<  "gbes_obj changed to:" << endl;
-        Rcout << gbes_obj << endl;
+        // Rcout <<  "gbes_obj changed to:" << endl;
+        // Rcout << gbes_obj << endl;
 
         //Update flag if improvement exceeds threshold
-        if (prev_gbes_obj - gbes_obj < it_tol){
+        if ((prev_gbes_obj - gbes_obj)/prev_gbes_obj < it_tol){
           ch_flg = true;
         }
 
@@ -357,7 +401,6 @@ int num_proc, double tol, double lb, double ub)
     else{
       it_same++;
     }
-//    cout << "and here..." << endl;
 
 //    //Update centroids using velocities
 //    w = 0.72;//inertia constant (from Merwe and Engelbrecht, 2003)
@@ -379,10 +422,18 @@ int num_proc, double tol, double lb, double ub)
     // cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
   }
 
-//  cout << "--------------------------------------------------" << endl;
-//  cout << "Clustering on global solution..." << endl;
-//  cout << "--------------------------------------------------" << endl;
-  kmeansreg(point,cluster_gbes,assign_gbes,energy_gbes,p,pw,1000,inn_itmax);
+// //  cout << "--------------------------------------------------" << endl;
+// //  cout << "Clustering on global solution..." << endl;
+// //  cout << "--------------------------------------------------" << endl;
+  for (int i=0; i<part_num; i++){
+    // cluster until converge on particles
+    cluster_gbes = cluster_center.slice(i);
+    assign_gbes = cluster.row(i);
+    energy_gbes = cluster_energy.row(i);
+    kmeansreg(point,cluster_gbes,assign_gbes,energy_gbes,p,pw,1000,inn_itmax);
+    cluster_center.slice(i) = cluster_gbes;
+  }
+
 
   //Post-process by doing PSO on mMcrit
 //  cout << "-------------------------------------------------" << endl;
@@ -390,7 +441,9 @@ int num_proc, double tol, double lb, double ub)
 //  cout << "-------------------------------------------------" << endl;
 
   //(point, cluster_center, cluster, cluster_energy, p, it_max, int inn_itmax)
-  gbes_obj = mMcritPSO(cluster_gbes,Rcpp_evalpts,mM_part_num,mM_it_max,mM_it_lim,mM_it_tol,tol,lb,ub,w,c1,c2);
+  // gbes_obj = mMcritPSO(cluster_gbes,Rcpp_evalpts,mM_part_num,mM_it_max,mM_it_lim,mM_it_tol,tol,lb,ub,w,c1,c2);
+  Rcout << "Post-processing ..." << endl;
+  gbes_obj = mMcritPSO(cluster_center,ini_cluster_center,cluster_gbes,Rcpp_evalpts,mM_it_max,mM_it_lim,mM_it_tol,tol,lb,ub,w,c1,c2);
 //  cout << "--------------------------------------------------" << endl;
 //  cout << "Final mM estimate:" << gbes_obj << endl;
 //  cout << "--------------------------------------------------" << endl;
