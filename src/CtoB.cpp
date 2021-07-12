@@ -72,13 +72,13 @@ NumericMatrix CtoBp(NumericMatrix& D, double by, int num_proc){
   NumericVector b(s);
   NumericVector svect(s); //cumulative
   NumericVector cvect(s);
-#ifdef _OPENMP
-  omp_set_num_threads(num_proc);
-#endif
+  // #ifdef _OPENMP
+  //   omp_set_num_threads(num_proc);
+  // #endif
 
   NumericMatrix ret(D.nrow(),D.ncol());
 
-  #pragma omp parallel for
+  // #pragma omp parallel for
   for (int i=0;i<D.nrow();i++){
     //compute new b vector
     // Rcout << "i: " << i << std::endl;

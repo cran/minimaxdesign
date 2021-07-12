@@ -8,7 +8,7 @@
   \code{mMdist} computes the minimax (fill) distance of a design (see Mak and Joseph (2018) for definition). Current design region options include the unit hypercube ("hypercube"), the unit simplex ("simplex"), the unit ball ("ball"), and user-defined constraints on the unit hypercube ("custom").
 }
 \usage{
-  mMdist(D,neval=1e5,method="lattice",region="hypercube",const=NA)
+  mMdist(D,neval=1e5,method="lattice",region="hypercube",const=NA,eval_pts=NA)
 }
 \arguments{
   \item{D}{An \code{N}-by-\code{p} design matrix.}
@@ -16,6 +16,7 @@
   \item{method}{Method for generating approximation points. Current options include "lattice" (lattice rule) and "sobol" (Sobol' sequence).}
   \item{region}{String for desired design region. Current options include "hypercube", "simplex", "ball", and "custom".}
   \item{const}{Function for desired constraints (inequalities) on design space.}
+  \item{eval_pts}{Custom clustering points (used only if \code{region} == "custom").}
 }
 \value{
 A list with two objects:

@@ -104,6 +104,7 @@ NumericVector mMcrit_allpts(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_evalp
 //--------------------------------------------------------------
 //Computes minimax and maximin criterion for PSO (internal use)
 //--------------------------------------------------------------
+// [[Rcpp::export]]
 double mMcrit(arma::mat& point, NumericMatrix& Rcpp_evalpts){ //minimax distance
   // Description of Inputs:
   // Rcpp_point     - Current design
@@ -113,6 +114,10 @@ double mMcrit(arma::mat& point, NumericMatrix& Rcpp_evalpts){ //minimax distance
   int eval_num = Rcpp_evalpts.nrow(); // number of evaluation points for mM
   double ret = 0.0; //to track mM
   double dst;
+
+  // Rcout << dim_num << endl;
+  // Rcout << point_num << endl;
+  // Rcout << eval_num << endl;
 
   for (int i=0;i<eval_num;i++){ // for each evaluation point
     dst = DBL_MAX; //i.e., arb. large

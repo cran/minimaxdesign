@@ -1,7 +1,7 @@
 Package: minimaxdesign
 Type: Package
 Title: Minimax and Minimax Projection Designs
-Version: 0.1.4
+Version: 0.1.5
 Author: Simon Mak
 Maintainer: Simon Mak <smak6@gatech.edu>
 Description: Provides two main functions, minimax() and miniMaxPro(), for computing minimax 
@@ -13,13 +13,12 @@ Description: Provides two main functions, minimax() and miniMaxPro(), for comput
     Design quality can be assessed using the function mMdist(), which computes the minimax
     (fill) distance of a design.
 License: GPL (>= 2)
-LazyData: TRUE
 Imports: Rcpp (>= 0.12.4), randtoolbox, DiceDesign, MaxPro, doParallel,
         doSNOW, gtools, nloptr, foreach, jpeg, gmp, conf.design, pdist,
-        DoE.base, FrF2
+        DoE.base, FrF2, geometry
 LinkingTo: Rcpp, RcppArmadillo
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
 NeedsCompilation: yes
-Packaged: 2019-05-06 21:05:55 UTC; smak6
+Packaged: 2021-07-12 13:10:15 UTC; sm769
 Repository: CRAN
-Date/Publication: 2019-05-06 22:30:03 UTC
+Date/Publication: 2021-07-12 22:10:02 UTC

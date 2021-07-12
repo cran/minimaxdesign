@@ -1,11 +1,7 @@
-# #set compiler flags for openMP (parallel processing in C++)
-# Sys.setenv("PKG_CXXFLAGS"="-fopenmp")
-# Sys.setenv("PKG_LIBS"="-fopenmp")
-
 ########################################################################
 # Main function for mMcPSO
 ########################################################################
-minimax <- function(N,p,q=10,region="hypercube",ini=NA,const=NA,
+minimax <- function(N,p,q=10,region="hypercube",ini=NA,const=NA,clust_pts=NA,
                   params_pso=list(w=0.72,c1=1.49,c2=1.49),
                   npart=5,nclust=1e5,neval=nclust,
                   itmax_pso=50,itmax_pp=100,itmax_inn=1e4,jit=0.1/sqrt(N)){
@@ -35,12 +31,13 @@ minimax <- function(N,p,q=10,region="hypercube",ini=NA,const=NA,
              return(D[good.idx,])
            }
          },
-         custom = {
+         ineq = {
            tf <- function(D,by,num_proc){ #randomly sample until enough points
              num_pts <- nrow(D)
              samp <- matrix(NA,nrow=num_pts,ncol=p)
              cur_pts <- 0
              while (cur_pts < num_pts){
+               # print(paste0("cur_pts: ",cur_pts))
                xx <- stats::runif(p)
                if (const(xx)){
                  samp[cur_pts+1,] <- xx
@@ -53,24 +50,38 @@ minimax <- function(N,p,q=10,region="hypercube",ini=NA,const=NA,
              good.idx <- apply(D,1,const)
              return(D[good.idx,])
            }
-         })
+         },
+         custom = { #custom clustering points
+           tf <- function(D,by,num_proc){return(D)}
+           checkBounds <- function(D){ #function for checking bound
+             return(D)
+           }
+           bd <- c(-1e8,1e8)
+         }
+         )
   by <- regionby
 
-  print("Generating clustering points ...")
-  # if (is.na(clust_pts)){
-    #Generate point
+
+  # Setting clustering points
+  if (any(is.na(clust_pts))){
+    print("Generating clustering points ...")
     # point = tf(randtoolbox::sobol(nclust,p),by,parallel::detectCores()) #clustering points
     clust_pts = tf(as.matrix(Lattice(max(conf.design::primes(nclust)),p))) #clustering points
     clust_pts <- checkBounds(clust_pts)
-  # }
 
-  # if (is.na(eval_pts)){
     #Generate eval_pts
     # eval_pts = tf(randtoolbox::sobol(neval,p),by,parallel::detectCores()) #minimax approximation points for post-processing
     eval_pts = tf(as.matrix(Lattice(max(conf.design::primes(neval)),p,shift=TRUE))) #minimax approximation points for post-processing
-    eval_pts = rbind(eval_pts,tf(gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE))) #add 3^p design
+    # eval_pts = tf(as.matrix(Lattice(max(conf.design::primes(neval)),p))) #minimax approximation points for post-processing
+    if (region=="hypercube"){
+      eval_pts = rbind(eval_pts,tf(gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE))) #add 3^p design
+    }
     eval_pts <- checkBounds(eval_pts)
-  # }
+  }else{
+    print("Using custom clustering points ...")
+    bd <- c(-1e8,1e8)
+    eval_pts <- clust_pts
+  }
 
   #   offset = seq(0,1-1/part_num,1/part_num)
 
@@ -78,7 +89,7 @@ minimax <- function(N,p,q=10,region="hypercube",ini=NA,const=NA,
 
   #automatically set initialization flag
   by.clust <- 1e-4
-  if (is.na(ini)){
+  if (any(is.na(ini))){
     if (region=="hypercube"){
       if ( (is.whole(log(N)/log(2))) && (N <= 2^p) ){ # ff initialization
         ini <- "ff"
@@ -92,7 +103,23 @@ minimax <- function(N,p,q=10,region="hypercube",ini=NA,const=NA,
     }
   }
   # Initialize
-  if (ini=="sobol"){ # initialize via randomized sobol'
+  if (region=="custom"){
+    cluster_center = clust_pts[sample(1:nrow(clust_pts),N),] #initial cluster centers
+    for (i in 1:(npart-1)){
+      cluster_center = cbind(cluster_center,clust_pts[sample(1:nrow(clust_pts),N),])
+    }
+  }else if (any(is.matrix(ini))){
+    cluster_center = tf(ini,by.clust,parallel::detectCores()) #initial cluster centers
+    for (i in 1:(npart-1)){ #add scrambled randtoolbox::sobol sets
+      cluster_center = cbind(cluster_center,tf(jitter(ini),by.clust,parallel::detectCores()))
+    }
+  }else if(any(is.list(ini))){
+    npart <- length(ini)
+    cluster_center <- c()
+    for (i in 1:npart){
+      cluster_center = cbind(cluster_center,tf(ini[[i]],by.clust,parallel::detectCores()))
+    }
+  }else if (ini=="sobol"){ # initialize via randomized sobol'
     cluster_center = tf(randtoolbox::sobol(N,p),by.clust,parallel::detectCores()) #initial cluster centers
     for (i in 1:(npart-1)){ #add scrambled randtoolbox::sobol sets
       cluster_center = cbind(cluster_center,tf(randtoolbox::sobol(N,p,init=FALSE),by.clust,parallel::detectCores()))
@@ -116,11 +143,16 @@ minimax <- function(N,p,q=10,region="hypercube",ini=NA,const=NA,
   # print("4")
   # mMc-PSO: function coded in C++
   t1 = Sys.time()
+  # print(dim(clust_pts))
+  # print(dim(eval_pts))
+  # print(dim(cluster_center))
+  # Sys.sleep(0.5)
+  # print(bd)
   D = kmeanspso(clust_pts, eval_pts, cluster_center, q, 2.0,
                 params_pso$w,params_pso$c1,params_pso$c2,
                 2*npart, itmax_pso, itmax_pp, 1000, 1000, 1e-4, 1e-4,
                 1e-4, itmax_inn,
-                parallel::detectCores(), jit, bd[1], bd[2])
+                parallel::detectCores(), jit, bd[1], bd[2], rep(0,N))
   fitpre <- D$gbes_centers
   fitpost <- fitpre;
 
@@ -149,6 +181,7 @@ miniMaxPro <- function(N,p,mMdes=NA, mMtol=1e-3*p,
     # refine_pts <- randtoolbox::sobol(refine_num,p)
   # }
   eval_pts = as.matrix(Lattice(max(conf.design::primes(neval)),p,shift=TRUE)) #minimax approximation points for post-processing
+  # eval_pts = as.matrix(Lattice(max(conf.design::primes(neval)),p)) #minimax approximation points for post-processing
   eval_pts = rbind(eval_pts,gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE)) #add 3^p design
 
   #Refinement
@@ -224,9 +257,8 @@ refine <- function(mMdes,eval_pts=NA,
         ini_pt <- pmin(pmax(cur_pt+toler*stats::runif(p,min=-1),0),1)
         # ini_pt <- cur_pt
         tryCatch({a=nloptr::nloptr( x0=ini_pt,
-                            mp,lb=rep(0,p),ub=rep(1,p),eval_g_ineq = con,
+                            mp,lb=rep(-1,p),ub=rep(1,p),eval_g_ineq = con,
                             opts = list("algorithm"="NLOPT_LD_MMA","maxeval"=100))
-
                   list("obj"=a$objective,"cur_sol"=a$sol,"prev_obj"=mp(cur_des[i,])$objective)}
                  ,error = function(err){
                    list("obj"=mp(cur_des[i,])$objective,"cur_sol"=cur_des[i,],"prev_obj"=mp(cur_des[i,])$objective)
@@ -283,17 +315,6 @@ refine <- function(mMdes,eval_pts=NA,
 # Functions for generating minimax designs from images
 ########################################################################
 
-# (N,p,q=10,region="uh",
-#  pso=list(w=0.72,c1=1.49,c2=1.49),
-#  npart=10,2*npart=5,
-#  nclust=1e5,neval=10*nclust,point=NA,eval_pts=NA,
-#  itmax_pso=200,itmax_pp=50,itmax_inn=1e4,
-#  it_lim_pso=25,it_lim_pp=10,
-#  tol_pso=1e-4,tol_pp=1e-4,tol_inn=1e-4,
-#  regionby=ifelse(p>2,1e-3,-1),
-#  jit=ifelse(region=="simp",0,0.1/sqrt(N)),
-#  pp_flag=F)
-
 minimax.map = function(N,img,p=2,q=10,
                       params_pso=list(w=0.72,c1=1.49,c2=1.49),
                       npart=5,nclust=1e5,neval=nclust,
@@ -325,16 +346,8 @@ minimax.map = function(N,img,p=2,q=10,
                 params_pso$w,params_pso$c1,params_pso$c2,
                 2*npart, itmax_pso, itmax_pp, 1000, 1000, 1e-4, 1e-4,
                 1e-4, itmax_inn,
-                parallel::detectCores(), jit, bd[1], bd[2])
+                parallel::detectCores(), jit, bd[1], bd[2], rep(0,N))
   # D$gbes_centers <- cbind(D$gbes_centers[,2],1-D$gbes_centers[,1])
   return(D$gbes_centers)
 }
 
-# if (ini=="kmeans"){ # initialize via k-means clustering
-#   cluster_center = stats::kmeans(clust_pts, jitter(tf(matrix(stats::runif(N*p),ncol=p),by.clust,parallel::detectCores())) )$centers
-#   for (i in 1:(npart-1)){ #add scrambled randtoolbox::sobol sets
-#     cluster_center = cbind(cluster_center,
-#                            stats::kmeans(clust_pts, jitter(tf(randtoolbox::sobol(N,p,init=FALSE),by.clust,parallel::detectCores())) )$centers
-#     )
-#   }
-# }else

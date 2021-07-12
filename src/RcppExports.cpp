@@ -30,8 +30,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // kmeansreg
-NumericMatrix kmeansreg(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_cluster_center, double p, double pw, int it_max, double inn_tol, int num_proc);
-RcppExport SEXP _minimaxdesign_kmeansreg(SEXP Rcpp_pointSEXP, SEXP Rcpp_cluster_centerSEXP, SEXP pSEXP, SEXP pwSEXP, SEXP it_maxSEXP, SEXP inn_tolSEXP, SEXP num_procSEXP) {
+NumericMatrix kmeansreg(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_cluster_center, double p, double pw, int it_max, double inn_tol, int num_proc, arma::vec& fix_ind);
+RcppExport SEXP _minimaxdesign_kmeansreg(SEXP Rcpp_pointSEXP, SEXP Rcpp_cluster_centerSEXP, SEXP pSEXP, SEXP pwSEXP, SEXP it_maxSEXP, SEXP inn_tolSEXP, SEXP num_procSEXP, SEXP fix_indSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -42,13 +42,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type it_max(it_maxSEXP);
     Rcpp::traits::input_parameter< double >::type inn_tol(inn_tolSEXP);
     Rcpp::traits::input_parameter< int >::type num_proc(num_procSEXP);
-    rcpp_result_gen = Rcpp::wrap(kmeansreg(Rcpp_point, Rcpp_cluster_center, p, pw, it_max, inn_tol, num_proc));
+    Rcpp::traits::input_parameter< arma::vec& >::type fix_ind(fix_indSEXP);
+    rcpp_result_gen = Rcpp::wrap(kmeansreg(Rcpp_point, Rcpp_cluster_center, p, pw, it_max, inn_tol, num_proc, fix_ind));
     return rcpp_result_gen;
 END_RCPP
 }
 // kmeanspso
-List kmeanspso(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_evalpts, NumericMatrix& Rcpp_cluster_center, double p, double pw, double w, double c1, double c2, int mM_part_num, int it_max, int mM_it_max, int it_lim, int mM_it_lim, double it_tol, double mM_it_tol, double inn_tol, int inn_itmax, int num_proc, double tol, double lb, double ub);
-RcppExport SEXP _minimaxdesign_kmeanspso(SEXP Rcpp_pointSEXP, SEXP Rcpp_evalptsSEXP, SEXP Rcpp_cluster_centerSEXP, SEXP pSEXP, SEXP pwSEXP, SEXP wSEXP, SEXP c1SEXP, SEXP c2SEXP, SEXP mM_part_numSEXP, SEXP it_maxSEXP, SEXP mM_it_maxSEXP, SEXP it_limSEXP, SEXP mM_it_limSEXP, SEXP it_tolSEXP, SEXP mM_it_tolSEXP, SEXP inn_tolSEXP, SEXP inn_itmaxSEXP, SEXP num_procSEXP, SEXP tolSEXP, SEXP lbSEXP, SEXP ubSEXP) {
+List kmeanspso(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_evalpts, NumericMatrix& Rcpp_cluster_center, double p, double pw, double w, double c1, double c2, int mM_part_num, int it_max, int mM_it_max, int it_lim, int mM_it_lim, double it_tol, double mM_it_tol, double inn_tol, int inn_itmax, int num_proc, double tol, double lb, double ub, NumericVector& Rcpp_fix_ind);
+RcppExport SEXP _minimaxdesign_kmeanspso(SEXP Rcpp_pointSEXP, SEXP Rcpp_evalptsSEXP, SEXP Rcpp_cluster_centerSEXP, SEXP pSEXP, SEXP pwSEXP, SEXP wSEXP, SEXP c1SEXP, SEXP c2SEXP, SEXP mM_part_numSEXP, SEXP it_maxSEXP, SEXP mM_it_maxSEXP, SEXP it_limSEXP, SEXP mM_it_limSEXP, SEXP it_tolSEXP, SEXP mM_it_tolSEXP, SEXP inn_tolSEXP, SEXP inn_itmaxSEXP, SEXP num_procSEXP, SEXP tolSEXP, SEXP lbSEXP, SEXP ubSEXP, SEXP Rcpp_fix_indSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -73,7 +74,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
     Rcpp::traits::input_parameter< double >::type lb(lbSEXP);
     Rcpp::traits::input_parameter< double >::type ub(ubSEXP);
-    rcpp_result_gen = Rcpp::wrap(kmeanspso(Rcpp_point, Rcpp_evalpts, Rcpp_cluster_center, p, pw, w, c1, c2, mM_part_num, it_max, mM_it_max, it_lim, mM_it_lim, it_tol, mM_it_tol, inn_tol, inn_itmax, num_proc, tol, lb, ub));
+    Rcpp::traits::input_parameter< NumericVector& >::type Rcpp_fix_ind(Rcpp_fix_indSEXP);
+    rcpp_result_gen = Rcpp::wrap(kmeanspso(Rcpp_point, Rcpp_evalpts, Rcpp_cluster_center, p, pw, w, c1, c2, mM_part_num, it_max, mM_it_max, it_lim, mM_it_lim, it_tol, mM_it_tol, inn_tol, inn_itmax, num_proc, tol, lb, ub, Rcpp_fix_ind));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -98,6 +100,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericMatrix& >::type Rcpp_point(Rcpp_pointSEXP);
     Rcpp::traits::input_parameter< NumericMatrix& >::type Rcpp_evalpts(Rcpp_evalptsSEXP);
     rcpp_result_gen = Rcpp::wrap(mMcrit_allpts(Rcpp_point, Rcpp_evalpts));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mMcrit
+double mMcrit(arma::mat& point, NumericMatrix& Rcpp_evalpts);
+RcppExport SEXP _minimaxdesign_mMcrit(SEXP pointSEXP, SEXP Rcpp_evalptsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat& >::type point(pointSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix& >::type Rcpp_evalpts(Rcpp_evalptsSEXP);
+    rcpp_result_gen = Rcpp::wrap(mMcrit(point, Rcpp_evalpts));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -177,4 +191,26 @@ BEGIN_RCPP
     rcpp_result_gen = Rcpp::wrap(closestPt(points, grd));
     return rcpp_result_gen;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"_minimaxdesign_CtoBp", (DL_FUNC) &_minimaxdesign_CtoBp, 3},
+    {"_minimaxdesign_printBar", (DL_FUNC) &_minimaxdesign_printBar, 1},
+    {"_minimaxdesign_kmeansreg", (DL_FUNC) &_minimaxdesign_kmeansreg, 8},
+    {"_minimaxdesign_kmeanspso", (DL_FUNC) &_minimaxdesign_kmeanspso, 22},
+    {"_minimaxdesign_mMcritPt", (DL_FUNC) &_minimaxdesign_mMcritPt, 2},
+    {"_minimaxdesign_mMcrit_allpts", (DL_FUNC) &_minimaxdesign_mMcrit_allpts, 2},
+    {"_minimaxdesign_mMcrit", (DL_FUNC) &_minimaxdesign_mMcrit, 2},
+    {"_minimaxdesign_mMcrit_proj", (DL_FUNC) &_minimaxdesign_mMcrit_proj, 3},
+    {"_minimaxdesign_avgcrit_proj", (DL_FUNC) &_minimaxdesign_avgcrit_proj, 3},
+    {"_minimaxdesign_kmeansobj", (DL_FUNC) &_minimaxdesign_kmeansobj, 3},
+    {"_minimaxdesign_CtoAA", (DL_FUNC) &_minimaxdesign_CtoAA, 3},
+    {"_minimaxdesign_CtoB2", (DL_FUNC) &_minimaxdesign_CtoB2, 3},
+    {"_minimaxdesign_closestPt", (DL_FUNC) &_minimaxdesign_closestPt, 2},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_minimaxdesign(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }

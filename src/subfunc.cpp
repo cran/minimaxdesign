@@ -10,7 +10,6 @@ using namespace std;
 using namespace arma;
 using namespace Rcpp;
 
-
 //*****************************************************
 //Transformation functions
 //*****************************************************
@@ -335,7 +334,7 @@ void find(arma::mat& arr, arma::mat& point, int seek, list<arma::mat>& L)
 //--------------------------------------------------------------
 // [[Rcpp::plugins(openmp)]]
 void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& cluster, arma::rowvec& cluster_energy,
-                double p, double pw, double inn_tol, int inn_itmax)
+                double p, double pw, double inn_tol, int inn_itmax, arma::vec& fix_ind)
 {
   // Description of Inputs:
   // point          - Clustering data for minimax clustering
@@ -367,7 +366,7 @@ void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& clust
   //  If cluster is uninitialized, then assign clusters
   //
 
-  //  cout << "kmeansreg...1" << endl;
+   // Rcout << "kmeansreg...1" << endl;
 
   if (cluster(0) < 0){
     for ( j = 0; j < point_num; j++ ) // for each data point
@@ -398,22 +397,24 @@ void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& clust
   //  Determine the C^q centers of the clusters by AGD
   //
 
-  //  cout << "kmeansreg...2" << endl;
+  // Rcout << "kmeansreg...2" << endl;
 
   for (k=0;k<cluster_num;k++){ // for each cluster
-    uvec idx = find(cluster,k);
-    //    cout << "kmeansreg...2: " << k << ",1" << endl;
-    if (idx[1]>double(point_num)){
-      //cluster is empty, assign random center
-      cluster_center.row(k) = randu(1,dim_num);
-    }
-    else{
-      //      cout << "kmeansreg...2: " << k << ",2" << endl;
-      //      cout << "idx: " << idx.size() << ", " << idx[0] << endl;
-      Dtmp = point.rows(idx);
-      //      cout << "kmeansreg...2: " << k << ",3" << endl;
-      cluster_center.row(k) = cq_agd(Dtmp,p,inn_tol,inn_itmax);
-      //      cout << "kmeansreg...2: " << k << ",4" << endl;
+    if (fix_ind[k]<0.5){
+      uvec idx = find(cluster,k);
+      //    cout << "kmeansreg...2: " << k << ",1" << endl;
+      if (idx[1]>double(point_num)){
+        //cluster is empty, assign random center
+        cluster_center.row(k) = randu(1,dim_num);
+      }
+      else{
+        //      cout << "kmeansreg...2: " << k << ",2" << endl;
+        //      cout << "idx: " << idx.size() << ", " << idx[0] << endl;
+        Dtmp = point.rows(idx);
+        //      cout << "kmeansreg...2: " << k << ",3" << endl;
+        cluster_center.row(k) = cq_agd(Dtmp,p,inn_tol,inn_itmax);
+        //      cout << "kmeansreg...2: " << k << ",4" << endl;
+      }
     }
   }
 
@@ -422,7 +423,7 @@ void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& clust
   //  Assign each point to the cluster of its nearest center.
   //
 
-  //  cout << "kmeansreg...3" << endl;
+   // Rcout << "kmeansreg...3" << endl;
 
   swap = 0;
 
@@ -476,7 +477,7 @@ void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& clust
 //--------------------------------------------------------------
 // [[Rcpp::plugins(openmp)]]
 void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& cluster, arma::rowvec& cluster_energy,
-                double p, double pw, int it_max, double inn_tol, int inn_itmax)
+                double p, double pw, int it_max, double inn_tol, int inn_itmax, arma::vec& fix_ind)
 {
   // Description of Inputs:
   // point          - Clustering data for minimax clustering
@@ -558,15 +559,17 @@ void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& clust
 
 #pragma omp parallel for
     for (k=0;k<cluster_num;k++){ // for each cluster
-      uvec idx = find(cluster,k);
-      if (idx[1]==UINT_MAX){
-        //cluster is empty, assign random center
-        cluster_center.row(k) = randu(1,dim_num);
-      }
-      else{
-        arma::mat Dtmp = point.rows(idx);
-        //update cluster centers
-        cluster_center.row(k) = cq_agd(Dtmp,p,inn_tol,inn_itmax);
+      if (fix_ind[k]<0.5){
+        uvec idx = find(cluster,k);
+        if (idx[1]==UINT_MAX){
+          //cluster is empty, assign random center
+          cluster_center.row(k) = randu(1,dim_num);
+        }
+        else{
+          arma::mat Dtmp = point.rows(idx);
+          //update cluster centers
+          cluster_center.row(k) = cq_agd(Dtmp,p,inn_tol,inn_itmax);
+        }
       }
     }
     //    cout << "test 1.2" << endl;

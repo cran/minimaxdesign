@@ -25,9 +25,9 @@ uvec find(int arr[], int len, int seek);
 uvec find(arma::rowvec& arr, int seek);
 NumericVector cq_agd(NumericMatrix& pts, double q, double eps);
 void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& cluster, arma::rowvec& cluster_energy,
-              double p, double pw, double inn_tol, int inn_itmax);
+              double p, double pw, double inn_tol, int inn_itmax, arma::vec& fix_ind);
 void kmeansreg (arma::mat& point, arma::mat& cluster_center, arma::rowvec& cluster, arma::rowvec& cluster_energy,
-              double p, double pw, int it_max, double inn_tol, int inn_itmax);
+              double p, double pw, int it_max, double inn_tol, int inn_itmax, arma::vec& fix_ind);
 
 //Minimax calculation functions (mMcrit.cpp)
 List mMcritPt(NumericMatrix& Rcpp_point, NumericMatrix& Rcpp_evalpts);

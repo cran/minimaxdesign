@@ -2,12 +2,13 @@
 # Minimax distance
 ########################################################################
 
-mMdist=function(D,neval=1e5,method="lattice",region="hypercube",const=NA){
+mMdist=function(D,neval=1e5,method="lattice",region="hypercube",const=NA,eval_pts=NA){
 
   bd <- c(0,1) #Default limits are (0,1)
   p <- ncol(D)
 
   # Define transformation function
+  flg <- T #set eval points
   switch(region,
          hypercube = {
            tf <- function(D,by,num_proc){return(D)}
@@ -29,7 +30,7 @@ mMdist=function(D,neval=1e5,method="lattice",region="hypercube",const=NA){
              return(D[good.idx,])
            }
          },
-         custom = {
+         ineq = {
            tf <- function(D,by,num_proc){ #randomly sample until enough points
              num_pts <- nrow(D)
              samp <- matrix(NA,nrow=num_pts,ncol=p)
@@ -47,28 +48,41 @@ mMdist=function(D,neval=1e5,method="lattice",region="hypercube",const=NA){
              good.idx <- apply(D,1,const)
              return(D[good.idx,])
            }
+         },
+         custom = {
+           tf <- function(D,by,num_proc){return(D)}
+           checkBounds <- function(D){ #function for checking bound
+             return(D)
+           }
+           M <- eval_pts
+           flg <- F
          }
          )
   regionby=ifelse(ncol(D)>2,1e-3,-1)
   by <- regionby
 
   # Generating evaluation points
-  switch(method,
-         lattice = {
-           m <- nrow(D)
-           d <- ncol(D)
-           M <- tf(as.matrix(Lattice(max(conf.design::primes(neval)),d)),by,parallel::detectCores())
-           M <- rbind(M,tf(gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE))) #add 3^p design
-           M <- checkBounds(M)
-         },
-         sobol = {
-           m <- nrow(D)
-           d <- ncol(D)
-           M <- tf(randtoolbox::sobol(neval,d),by,parallel::detectCores())
-           M <- rbind(M,tf(gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE))) #add 3^p design
-           M <- checkBounds(M)
-         }
-  )
+  if (flg){
+    switch(method,
+           lattice = {
+             m <- nrow(D)
+             d <- ncol(D)
+             M <- tf(as.matrix(Lattice(max(conf.design::primes(neval)),d)),by,parallel::detectCores())
+             M <- rbind(M,tf(gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE))) #add 3^p design
+             M <- checkBounds(M)
+           },
+           sobol = {
+             m <- nrow(D)
+             d <- ncol(D)
+             M <- tf(randtoolbox::sobol(neval,d),by,parallel::detectCores())
+             M <- rbind(M,tf(gtools::permutations(3,p,c(0.0,0.5,1.0),repeats.allowed=TRUE))) #add 3^p design
+             M <- checkBounds(M)
+           }
+    )
+  }else{
+    m <- nrow(D)
+    d <- ncol(D)
+  }
 
   # Compute minimax distance
   mM=as.matrix(pdist::pdist(M,D))
